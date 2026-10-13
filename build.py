@@ -112,7 +112,7 @@ def head(title, desc, path, root, extra=""):
 <meta name="robots" content="noindex,follow">
 <link rel="canonical" href="%s">
 <meta property="og:title" content="%s"><meta property="og:description" content="%s"><meta property="og:type" content="website"><meta property="og:locale" content="nl_NL">
-<meta name="theme-color" content="#120d2b">
+<meta name="theme-color" content="#07060f">
 <link rel="icon" href="%sfavicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
@@ -122,6 +122,7 @@ def head(title, desc, path, root, extra=""):
 %s
 </head>
 <body>
+<div class="fx-fallback" aria-hidden="true"></div><canvas id="fx" aria-hidden="true"></canvas><div class="fx-veil" aria-hidden="true"></div><div class="fx-grain" aria-hidden="true"></div><div class="cursor-glow" aria-hidden="true"></div>
 <div class="progress" aria-hidden="true"></div>''' % (e(title), e(desc), canon, e(title), e(desc), root, root, BUILD, json.dumps(root), extra)
 
 def searchbox(cls="", ph="Zoek een product of merk", btn=True):
@@ -144,7 +145,7 @@ def footer(root):
     pop = "".join('<li><a href="%s%s">%s</a></li>' % (root, g["url"], e(g["short"])) for g in guides[:7])
     cats = "".join('<li><a href="%scategorie/%s.html">%s</a></li>' % (root, k, v[0]) for k, v in CATS.items() if by_cat.get(k))
     return '''<footer><div class="wrap"><div class="cols">
-<div><a class="logo" href="%sindex.html">%s<span class="logo-word">wat<b style="color:#c9b8ff">koop</b>ik</span></a><p style="margin-top:12px;font-size:.92rem">Onafhankelijke top 10-gidsen. Wij vergelijken prijs, specificaties en reviews zodat jij in vijf minuten de juiste keuze maakt.</p></div>
+<div><a class="logo" href="%sindex.html">%s<span class="logo-word">wat<b>koop</b>ik</span></a><p style="margin-top:12px;font-size:.92rem">Onafhankelijke top 10-gidsen. Wij vergelijken prijs, specificaties en reviews zodat jij in vijf minuten de juiste keuze maakt.</p></div>
 <div><h4>Populair</h4><ul>%s</ul></div>
 <div><h4>Categorieën</h4><ul>%s</ul></div>
 <div><h4>watkoopik</h4><ul><li><a href="%skeuzehulp.html">Keuzehulp</a></li><li><a href="%sslimste-koop.html">Slimste koop</a></li><li><a href="%szo-kiezen-wij.html">Zo kiezen wij</a></li><li><a href="%sover-ons.html">Over ons</a></li><li><a href="%scontact.html">Contact</a></li><li><a href="%sprivacy.html">Privacy</a></li><li><a href="%sdisclaimer.html">Affiliate-disclaimer</a></li></ul></div>
@@ -163,7 +164,7 @@ def page(path, title, desc, body, active=None, extra="", root=None):
 # ---------- bouwstenen ----------
 def gcard(g, root=""):
     p = win(g)
-    return '''<a class="gc spot rv" href="%s%s" data-cat-item="%s"><div class="gc-img"><span class="tag">Top 10</span>%s</div><div class="gc-body"><h3>%s</h3><p>%s</p><div class="gc-win"><span>Winnaar: <b>%s %s</b></span><span class="pr">%s</span></div></div></a>''' % (
+    return '''<a class="gc ring tilt rv" href="%s%s" data-cat-item="%s"><div class="gc-img"><span class="tag">Top 10</span>%s</div><div class="gc-body"><h3>%s</h3><p>%s</p><div class="gc-win"><span>Winnaar: <b>%s %s</b></span><span class="pr">%s</span></div></div></a>''' % (
         root, g["url"], g["cat"], img_of(p), e(g["title"]), e(g["intro"][:130].rsplit(" ", 1)[0] + "…"), e(p["brand"]), e(p["name"]), eur(p["price"]))
 
 def mq_items(root=""):
@@ -180,69 +181,81 @@ def marquee(items, rev=False, light=False):
 items = mq_items()
 half = len(items) // 2
 chips = "".join('<a href="%s">%s</a>' % (g["url"], e(g["short"])) for g in guides[:9])
-cat_cards = "".join('''<a class="cat spot rv" href="categorie/%s.html"><span class="ic">%s</span><b>%s</b><small>%d gidsen</small><span class="thumbs">%s</span></a>''' % (
-    k, icon(k), v[0], len(by_cat[k]), "".join('<img src="%s" alt="" loading="lazy">' % e(win(x)["image"]) for x in by_cat[k][:4] if win(x).get("image"))) for k, v in CATS.items() if by_cat.get(k))
-hs_cards = "".join('''<a class="hs-card" href="%s"><div class="im">%s</div><div class="bd"><small>%s · winnaar</small><h3>%s %s</h3><div class="pr">%s</div></div></a>''' % (
-    g["url"], img_of(win(g)), e(g["short"]), e(win(g)["brand"]), e(win(g)["name"]), eur(win(g)["price"])) for g in [x for x in guides if win(x).get("image")][:12])
-hs_rows = "".join('<a class="rw rv" href="%s"><div class="rw-img">%s</div><div><h3>%s %s</h3><small>Winnaar %s · %s</small></div><span class="go">→</span></a>' % (
-    g["url"], img_of(win(g)), e(win(g)["brand"]), e(win(g)["name"]), e(g["short"].lower()), eur(win(g)["price"])) for g in [x for x in guides if win(x).get("image")][:8])
+PALET = {"huishouden": ("#7c5cff", "#38e1ff"), "keuken": ("#ff7a3d", "#ff4fd8"), "verzorging": ("#ff4fd8", "#7c5cff"), "slapen": ("#3b5bff", "#38e1ff"),
+         "elektronica": ("#00c2ff", "#7c5cff"), "wonen": ("#3ee08f", "#38e1ff"), "sport": ("#ffc65c", "#ff7a3d"), "kind": ("#ff8fb1", "#ffc65c"), "klussen": ("#ffc65c", "#3ee08f")}
+cat_keys = [k for k in CATS if by_cat.get(k)]
+sizes = ["big", "", "", "wide", "", ""]
+cat_cards = "".join('''<a class="cat ring tilt rv %s" href="categorie/%s.html" style="--c1:%s;--c2:%s"><span class="ic">%s</span><span class="thumbs">%s</span><b>%s</b><small>%d gidsen · %s</small></a>''' % (
+    sizes[i] if i < len(sizes) else "", k, PALET[k][0], PALET[k][1], icon(k), "".join('<img src="%s" alt="" loading="lazy">' % e(win(x)["image"]) for x in by_cat[k][:4] if win(x).get("image")),
+    CATS[k][0], len(by_cat[k]), CATS[k][1].split(",")[0]) for i, k in enumerate(cat_keys))
+winners = [g for g in guides if win(g).get("image")]
+def wincard(g):
+    p = win(g)
+    return '''<a class="wincard" href="%s"><div class="im"><span class="crown">Nr. 1 %s</span><img src="%s" alt="%s %s" loading="lazy"></div><div class="bd"><small>%s · winnaar</small><h3>%s %s</h3><div class="pr">%s</div></div></a>''' % (
+        g["url"], e(g["short"].lower()), e(p["image"]), e(p["brand"]), e(p["name"]), e(g["short"]), e(p["brand"]), e(p["name"]), eur(p["price"]))
+wh = len(winners) // 2
+winband = '<div class="mq winband">%s</div><div class="mq winband rev" style="margin-top:14px">%s</div>' % (
+    '<div class="mq-track">%s</div>' % ("".join(wincard(g) for g in winners[:wh]) * 2),
+    '<div class="mq-track">%s</div>' % ("".join(wincard(g) for g in winners[wh:]) * 2))
+fl_imgs = [win(g)["image"] for g in winners[:6]]
+floaters = '<div class="floaters" aria-hidden="true">%s</div>' % "".join('<div class="fl f%d" data-depth="%s"><div class="in"><img src="%s" alt=""></div></div>' % (i + 1, [.6, 1, .4, .8, .3, .5][i], e(im)) for i, im in enumerate(fl_imgs))
 
 home = '''
-<section class="hero"><canvas class="aurora" aria-hidden="true"></canvas><div class="grain"></div>
+<section class="hero" data-hue="0">%s
 <div class="hero-in">
-<span class="kick" style="color:#ffb48a">Onafhankelijke koopgidsen · %d</span>
+<span class="badge"><i></i> Elke dag nieuwe top 10's · prijzen dagelijks gecheckt</span>
 <h1 class="split">Wat koop ik? <span class="grad">Wij zochten het uit.</span></h1>
-<p class="lead">Elke dag een nieuwe top 10 van de beste producten. Vergeleken op prijs, specificaties en duizenden reviews, zodat jij in vijf minuten de juiste keuze maakt.</p>
+<p class="lead">Onafhankelijke top 10-lijsten van de beste producten van %d. Vergeleken op prijs, specificaties en duizenden reviews, zodat jij in vijf minuten de juiste keuze maakt.</p>
 %s
 <div class="hero-chips">%s</div>
-<div class="hero-stats"><div><b data-count="%d">%d</b><span>top 10-gidsen</span></div><div><b data-count="%d">%d</b><span>producten vergeleken</span></div><div><b data-count="%d">%s</b><span>reviews meegewogen</span></div></div>
+<div class="hero-stats"><div><b class="grad" data-count="%d">%d</b><span>top 10-gidsen</span></div><div><b class="grad" data-count="%d">%d</b><span>producten vergeleken</span></div><div><b class="grad" data-count="%d">%s</b><span>reviews meegewogen</span></div></div>
 </div>
 <div class="hero-band">%s%s</div>
 </section>
 
-<section><div class="wrap">
-<div class="sec-head rv"><div><span class="kick">Categorieën</span><h2>Waar ben je naar op zoek?</h2></div><p>Kies een categorie en zie meteen de winnaars per productsoort.</p></div>
-<div class="cats">%s</div>
+<section data-hue="1"><div class="wrap">
+<div class="sec-head rv"><div><span class="kick">Categorieën</span><h2>Waar ben je naar <span class="grad">op zoek?</span></h2></div><p>Kies een categorie en zie meteen de winnaars per productsoort.</p></div>
+<div class="bento">%s</div>
 </div></section>
 
-<section class="hs hs-desktop"><div class="wrap"><div class="sec-head"><div><span class="kick" style="color:#ffb48a">De winnaars</span><h2>Nummer 1 in elke top 10</h2></div><p>Scroll door de producten die in hun categorie als beste uit onze vergelijking kwamen.</p></div></div>
-<div class="hs-track">%s</div><div style="height:40px"></div></section>
-<section class="hs-mobile"><div class="wrap"><div class="sec-head"><div><span class="kick">De winnaars</span><h2>Nummer 1 per gids</h2></div><a class="more" href="gidsen.html">Alles →</a></div><div class="rows">%s</div></div></section>
+<section data-hue="2" style="padding-left:0;padding-right:0"><div class="wrap"><div class="sec-head rv"><div><span class="kick">De winnaars</span><h2>Nummer 1 in <span class="grad">elke top 10</span></h2></div><a class="more" href="gidsen.html">Alle gidsen →</a></div></div>
+%s
+</section>
 
-<section style="padding-top:20px"><div class="wrap">
-<div class="sec-head rv"><div><span class="kick">Nieuw</span><h2>De nieuwste gidsen</h2></div><a class="more" href="gidsen.html">Alle %d gidsen →</a></div>
+<section data-hue="3"><div class="wrap">
+<div class="sec-head rv"><div><span class="kick">Nieuw</span><h2>De nieuwste <span class="grad">gidsen</span></h2></div><a class="more" href="gidsen.html">Alle %d gidsen →</a></div>
 <div class="gl">%s</div>
 </div></section>
 
-<section style="background:var(--bg2)"><div class="wrap">
-<div class="sec-head rv"><div><span class="kick">Zo werkt het</span><h2>In drie stappen de juiste keuze</h2></div></div>
+<section data-hue="4"><div class="wrap">
+<div class="sec-head rv"><div><span class="kick">Zo werkt het</span><h2>In drie stappen <span class="grad">de juiste keuze</span></h2></div></div>
 <div class="steps">
-<div class="step rv"><div class="n">1</div><h3>Zoek of kies</h3><p class="muted">Typ een product in de zoekbalk of kies een categorie. Weet je het nog niet? Gebruik de <a href="keuzehulp.html">keuzehulp</a>.</p></div>
-<div class="step rv"><div class="n">2</div><h3>Vergelijk de top 10</h3><p class="muted">Bovenaan zie je de beste keuze, de slimste koop en de beste premium optie. Daaronder alle tien modellen naast elkaar.</p></div>
-<div class="step rv"><div class="n">3</div><h3>Koop met een gerust hart</h3><p class="muted">Klik door naar bol. Prijzen controleren we dagelijks, plus- en minpunten staan er eerlijk bij.</p></div>
+<div class="step ring tilt rv"><div class="n">1</div><h3>Zoek of kies</h3><p>Typ een product in de zoekbalk of kies een categorie. Weet je het nog niet? Gebruik de <a href="keuzehulp.html">keuzehulp</a>.</p></div>
+<div class="step ring tilt rv"><div class="n">2</div><h3>Vergelijk de top 10</h3><p>Bovenaan staan de beste keuze, de slimste koop en de beste premium optie. Daaronder alle tien modellen naast elkaar.</p></div>
+<div class="step ring tilt rv"><div class="n">3</div><h3>Koop met een gerust hart</h3><p>Klik door naar bol. Prijzen controleren we dagelijks, plus- en minpunten staan er eerlijk bij.</p></div>
 </div>
 <div class="numbers" style="margin-top:18px">
-<div class="rv"><b data-count="%d">%d</b><span>gidsen</span></div><div class="rv"><b data-count="%d">%d</b><span>producten</span></div><div class="rv"><b>4</b><span>criteria per product</span></div><div class="rv"><b>0</b><span>betaalde plekken</span></div>
+<div class="rv"><b class="grad" data-count="%d">%d</b><span>gidsen</span></div><div class="rv"><b class="grad" data-count="%d">%d</b><span>producten</span></div><div class="rv"><b class="grad">4</b><span>criteria per product</span></div><div class="rv"><b class="grad">0</b><span>betaalde plekken</span></div>
 </div>
 </div></section>
 
-<section><div class="wrap">
+<section data-hue="5"><div class="wrap">
 <div class="cta-band rv"><div><h2>Twijfel je nog?</h2><p>Beantwoord drie vragen en wij kiezen het product dat het beste bij jou past.</p></div><div><a class="btn btn-dark magnet" href="keuzehulp.html" style="width:100%%">Start de keuzehulp <span class="arr">→</span></a></div></div>
 </div></section>
 
-<section style="padding-top:0"><div class="wrap narrow rv">
-<h2 style="font-size:1.6rem">Onafhankelijk koopadvies voor %d</h2>
+<section data-hue="6" style="padding-top:20px"><div class="wrap narrow rv">
+<h2 style="font-size:1.7rem">Onafhankelijk koopadvies voor %d</h2>
 <p class="muted">watkoopik vergelijkt per productsoort de tien beste modellen die je nu in Nederland kunt kopen. Of je nu de <a href="beste/beste-airfryer.html">beste airfryer</a>, een <a href="beste/beste-stofzuiger.html">stille stofzuiger</a> of <a href="beste/beste-draadloze-oordopjes.html">draadloze oordopjes met noise cancelling</a> zoekt: elke gids begint met drie duidelijke winnaars, gevolgd door een vergelijkingstabel, uitleg per product met plus- en minpunten, een koopgids en antwoorden op veelgestelde vragen. Merken kunnen geen plek kopen. <a href="zo-kiezen-wij.html">Lees hoe wij kiezen</a>.</p>
 </div></section>
-''' % (YEAR, searchbox(), chips, len(guides), len(guides), N_PROD, N_PROD, N_REV, format(N_REV, ",").replace(",", "."),
-       marquee(items[:half]), marquee(items[half:], rev=True), cat_cards, hs_cards, hs_rows, len(guides), "".join(gcard(g) for g in guides[:9]),
+''' % (floaters, YEAR, searchbox(), chips, len(guides), len(guides), N_PROD, N_PROD, N_REV, format(N_REV, ",").replace(",", "."),
+       marquee(items[:half]), marquee(items[half:], rev=True), cat_cards, winband, len(guides), "".join(gcard(g) for g in guides[:9]),
        len(guides), len(guides), N_PROD, N_PROD, YEAR)
 page("index.html", "watkoopik · De beste producten van %d vergeleken" % YEAR, "Onafhankelijke top 10-gidsen: de beste stofzuigers, airfryers, föhns en meer van %d. Vergeleken op prijs, specificaties en reviews." % YEAR, home)
 
 # ---------- alle gidsen met filter ----------
 filt = '<div class="filters"><button class="on" data-cat="alle">Alle</button>%s</div>' % "".join('<button data-cat="%s">%s</button>' % (k, v[0]) for k, v in CATS.items() if by_cat.get(k))
 page("gidsen.html", "Alle top 10-gidsen | watkoopik", "Overzicht van alle top 10-gidsen van watkoopik, te filteren per categorie.",
-     '<section style="padding-top:34px"><div class="wrap"><span class="kick">Overzicht</span><h1 class="split" style="font-size:clamp(1.9rem,5vw,3.2rem)">Alle %d top 10-gidsen</h1><p class="muted" style="max-width:620px">Filter op categorie of zoek direct op product of merk.</p><div style="max-width:560px;margin:14px 0 18px">%s</div>%s<div class="gl">%s</div></div></section>' % (
+     '<section data-hue="1" style="padding-top:34px"><div class="wrap"><span class="kick">Overzicht</span><h1 class="split" style="font-size:clamp(1.9rem,5vw,3.2rem)">Alle %d top 10-gidsen</h1><p class="muted" style="max-width:620px">Filter op categorie of zoek direct op product of merk.</p><div style="max-width:560px;margin:14px 0 18px">%s</div>%s<div class="gl">%s</div></div></section>' % (
          len(guides), searchbox(), filt, "".join(gcard(g) for g in guides)), "gidsen.html")
 
 # ---------- categorieën ----------
@@ -324,7 +337,7 @@ for g in guides:
         {"max": 99999, "label": "Geen limiet", "hint": "Het beste is goed genoeg"}],
         "products": [{"name": "%s %s" % (p["brand"], p["name"]), "price": p["price"], "priceTxt": eur_n(p["price"]), "score": p["score"], "oneliner": p["oneliner"], "image": p.get("image", ""), "link": shop_link(p)} for p in g["products"]]}
 q_opts = "".join('<button data-k="gids" data-v="%s"><b>%s</b><small>%s</small></button>' % (g["slug"], e(g["short"]), CATS[g["cat"]][0]) for g in guides)
-qbody = '''<section style="padding-top:34px"><div class="wrap">
+qbody = '''<section data-hue="1" style="padding-top:34px"><div class="wrap">
 <div style="text-align:center;max-width:680px;margin:0 auto 24px"><span class="kick">Keuzehulp</span><h1 class="split" style="font-size:clamp(1.9rem,5vw,3.2rem)">In drie vragen naar jouw beste keuze</h1><p class="muted">Kies een product, je budget en wat je het belangrijkst vindt. Wij rekenen de rest uit op basis van onze vergelijking.</p></div>
 <div class="quiz"><div class="q-prog"><i></i></div>
 <div class="q-step" data-i="0"><h3>1. Wat zoek je?</h3><div class="q-opts">%s</div></div>
@@ -345,11 +358,11 @@ def best_value(g):
 sv = "".join('<a class="rw rv" href="%s"><div class="rw-img">%s</div><div><h3>%s %s</h3><small>Slimste koop bij %s · score %s</small></div><b style="font-family:Sora">%s</b></a>' % (
     g["url"], img_of(best_value(g)), e(best_value(g)["brand"]), e(best_value(g)["name"]), e(g["short"].lower()), best_value(g)["score"], eur(best_value(g)["price"])) for g in guides)
 page("slimste-koop.html", "De slimste koop per productsoort | watkoopik", "Per categorie het product met de beste prijs-kwaliteitverhouding uit onze top 10-gidsen.",
-     '<section style="padding-top:34px"><div class="wrap narrow"><span class="kick">Prijs-kwaliteit</span><h1 class="split" style="font-size:clamp(1.9rem,5vw,3.2rem)">De slimste koop per productsoort</h1><p class="muted">Niet het duurste, wel het verstandigste: per gids het model dat de meeste kwaliteit per euro biedt.</p><div class="rows" style="margin-top:20px">%s</div></div></section>' % sv, "slimste-koop.html")
+     '<section data-hue="1" style="padding-top:34px"><div class="wrap narrow"><span class="kick">Prijs-kwaliteit</span><h1 class="split" style="font-size:clamp(1.9rem,5vw,3.2rem)">De slimste koop per productsoort</h1><p class="muted">Niet het duurste, wel het verstandigste: per gids het model dat de meeste kwaliteit per euro biedt.</p><div class="rows" style="margin-top:20px">%s</div></div></section>' % sv, "slimste-koop.html")
 
 # ---------- vaste pagina's ----------
 def prose(path, title, desc, inner, active=None):
-    page(path, title + " | watkoopik", desc, '<section style="padding-top:34px"><div class="wrap prose">%s</div></section>' % inner, active)
+    page(path, title + " | watkoopik", desc, '<section data-hue="1" style="padding-top:34px"><div class="wrap prose">%s</div></section>' % inner, active)
 prose("zo-kiezen-wij.html", "Zo kiezen wij", "Hoe watkoopik producten vergelijkt en rangschikt.", '''<span class="kick">Onze methode</span><h1 class="split" style="font-size:clamp(1.9rem,5vw,3rem)">Zo komen onze top 10's tot stand</h1>
 <div class="numbers" style="margin:20px 0"><div class="rv"><b>4</b><span>criteria</span></div><div class="rv"><b>1000+</b><span>reviews per gids</span></div><div class="rv"><b>0</b><span>betaalde plekken</span></div><div class="rv"><b>Dagelijks</b><span>prijzen gecheckt</span></div></div>
 <h2>Wat we wegen</h2><p>Elk product krijgt een score van 1 tot 10. <b>Prestaties</b> (40%): hoe goed doet het product zijn werk, op basis van specificaties en terugkerende ervaringen in reviews. <b>Prijs-kwaliteit</b> (25%): wat krijg je voor je geld vergeleken met de rest van de lijst. <b>Betrouwbaarheid</b> (20%): garantie, merkreputatie en klachten over defecten. <b>Gebruiksgemak</b> (15%): bediening, onderhoud en ergernissen.</p>
