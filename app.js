@@ -90,22 +90,26 @@
 
   /* ---------- WebGL-achtergrond: vloeiende kleuren die per sectie wisselen ---------- */
   var PALETTES = [
-    [[0.49,0.36,1.0],[1.0,0.31,0.85],[1.0,0.48,0.24]],
-    [[0.22,0.88,1.0],[0.49,0.36,1.0],[1.0,0.31,0.85]],
-    [[1.0,0.48,0.24],[1.0,0.78,0.36],[1.0,0.31,0.85]],
-    [[0.24,0.88,0.56],[0.22,0.88,1.0],[0.49,0.36,1.0]],
-    [[1.0,0.31,0.85],[0.49,0.36,1.0],[0.22,0.88,1.0]],
-    [[1.0,0.48,0.24],[1.0,0.31,0.85],[0.49,0.36,1.0]],
-    [[0.49,0.36,1.0],[0.22,0.88,1.0],[0.24,0.88,0.56]]
+    [[0.55,0.40,1.00],[1.00,0.36,0.78],[1.00,0.62,0.30]],
+    [[1.00,0.42,0.55],[1.00,0.74,0.26],[0.98,0.32,0.80]],
+    [[0.20,0.80,1.00],[0.55,0.45,1.00],[0.30,1.00,0.80]],
+    [[1.00,0.84,0.20],[1.00,0.50,0.30],[1.00,0.40,0.70]],
+    [[0.30,1.00,0.70],[0.20,0.75,1.00],[0.75,1.00,0.35]],
+    [[1.00,0.40,0.85],[0.65,0.45,1.00],[0.30,0.85,1.00]],
+    [[1.00,0.60,0.25],[1.00,0.90,0.30],[0.40,1.00,0.75]]
   ];
   var pal = { c: PALETTES[0].map(function (x) { return x.slice(); }) };
-  window.__setHue = function (i) {
-    var to = PALETTES[i % PALETTES.length];
-    if (window.gsap) gsap.to(pal.c[0], { 0: to[0][0], 1: to[0][1], 2: to[0][2], duration: 1.6, ease: "sine.inOut", overwrite: true }),
-      gsap.to(pal.c[1], { 0: to[1][0], 1: to[1][1], 2: to[1][2], duration: 1.6, ease: "sine.inOut", overwrite: true }),
-      gsap.to(pal.c[2], { 0: to[2][0], 1: to[2][1], 2: to[2][2], duration: 1.6, ease: "sine.inOut", overwrite: true });
-    else pal.c = to.map(function (x) { return x.slice(); });
-  };
+  // kleur volgt de scrollpositie continu: elke beweging van je duim verschuift de kleuren
+  var scrollMix = 0, speed = 0, lastY = window.scrollY;
+  function targetPalette() {
+    var max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    var f = Math.min(.9999, Math.max(0, window.scrollY / max)) * (PALETTES.length - 1);
+    var i = Math.floor(f), k = f - i, A = PALETTES[i], B = PALETTES[Math.min(i + 1, PALETTES.length - 1)];
+    k = k * k * (3 - 2 * k);
+    return A.map(function (c, j) { return c.map(function (v, n) { return v + (B[j][n] - v) * k; }); });
+  }
+  window.addEventListener("scroll", function () { var y = window.scrollY; speed = Math.min(6, speed + Math.abs(y - lastY) * .02); lastY = y; }, { passive: true });
+  window.__setHue = function () {};
   var cv = document.getElementById("fx");
   if (cv && !reduce) (function () {
     var gl = cv.getContext("webgl", { antialias: false, alpha: false, powerPreference: "low-power" });
@@ -119,7 +123,7 @@
       "vec2 q=vec2(fbm(p+T),fbm(p+vec2(5.2,1.3)-T));vec2 w=vec2(fbm(p+3.*q+vec2(1.7,9.2)+T*1.5),fbm(p+3.*q+vec2(8.3,2.8)-T));" +
       "float f=fbm(p+2.5*w);vec3 col=mix(a,b,smoothstep(.2,.8,f));col=mix(col,c,smoothstep(.45,1.,length(w)*.9));" +
       "float glow=.35/(1.+12.*length(uv-m));col+=glow*b;" +
-      "float v=smoothstep(1.25,.25,length(uv-.5));col*=.55+.5*f;col=mix(vec3(.03,.02,.06),col,.62*v+.12);gl_FragColor=vec4(col,1.);}";
+      "float v=smoothstep(1.35,.2,length(uv-.5));col*=.78+.42*f;col=mix(vec3(.05,.03,.10),col,.82*v+.22);gl_FragColor=vec4(col,1.);}";
     function sh(type, src) { var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; }
     var pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(pr);
     if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) { cv.style.display = "none"; return; }
@@ -131,12 +135,15 @@
     function size() { cv.width = Math.round(window.innerWidth * scale); cv.height = Math.round(window.innerHeight * scale); gl.viewport(0, 0, cv.width, cv.height); }
     size(); window.addEventListener("resize", size);
     window.addEventListener("pointermove", function (e) { tmx = e.clientX / window.innerWidth; tmy = 1 - e.clientY / window.innerHeight; }, { passive: true });
-    var t0 = performance.now(), hidden = false;
+    var t0 = performance.now(), hidden = false, flow = 0;
     document.addEventListener("visibilitychange", function () { hidden = document.hidden; });
     (function loop(now) {
       if (!hidden) {
         mx += (tmx - mx) * .04; my += (tmy - my) * .04;
-        gl.uniform2f(U.r, cv.width, cv.height); gl.uniform1f(U.t, (now - t0) / 1000);
+        var tp = targetPalette();
+        for (var j = 0; j < 3; j++) for (var n = 0; n < 3; n++) pal.c[j][n] += (tp[j][n] - pal.c[j][n]) * .06;
+        speed *= .94; flow += (1 + speed * 2.2) * 16;
+        gl.uniform2f(U.r, cv.width, cv.height); gl.uniform1f(U.t, flow / 1000);
         gl.uniform3fv(U.a, pal.c[0]); gl.uniform3fv(U.b, pal.c[1]); gl.uniform3fv(U.c, pal.c[2]); gl.uniform2f(U.m, mx, my);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       }
@@ -197,12 +204,6 @@
   /* ---------- scorebalken ---------- */
   document.querySelectorAll(".bar em").forEach(function (b) {
     gsap.from(b, { scaleX: 0, duration: 1.1, ease: "power3.out", scrollTrigger: { trigger: b, start: "top 92%" } });
-  });
-
-  /* ---------- achtergrondkleur wisselt per sectie ---------- */
-  document.querySelectorAll("[data-hue]").forEach(function (sec) {
-    var i = +sec.getAttribute("data-hue");
-    ScrollTrigger.create({ trigger: sec, start: "top 55%", end: "bottom 55%", onEnter: function () { window.__setHue(i); }, onEnterBack: function () { window.__setHue(i); } });
   });
 
   /* ---------- hero parallax ---------- */
